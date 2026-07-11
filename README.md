@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/go-instagram/brand/main/social/go-instagram.png" alt="go-instagram/instagram" width="720"></p>
+
 # instagram
 
 [![CI](https://github.com/go-instagram/instagram/actions/workflows/ci.yml/badge.svg)](https://github.com/go-instagram/instagram/actions/workflows/ci.yml)
