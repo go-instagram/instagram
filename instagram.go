@@ -73,6 +73,10 @@ type Client struct {
 	// SessionID, when set, is sent as the "sessionid" cookie to authenticate
 	// reads. Instagram frequently requires this for public data.
 	SessionID string
+	// CSRFToken, when set, is sent as the "csrftoken" cookie and the X-CSRFToken
+	// header. The private friendships endpoints (see [Client.Following]) require
+	// it in addition to the sessionid.
+	CSRFToken string
 	// AppID is sent as the x-ig-app-id header. Defaults to DefaultAppID.
 	AppID string
 }
@@ -98,6 +102,12 @@ func WithUserAgent(ua string) Option {
 // WithSessionID sets the "sessionid" cookie sent with requests.
 func WithSessionID(sessionID string) Option {
 	return func(c *Client) { c.SessionID = sessionID }
+}
+
+// WithCSRFToken sets the "csrftoken" cookie / X-CSRFToken header sent with
+// requests to the private friendships endpoints (see [Client.Following]).
+func WithCSRFToken(token string) Option {
+	return func(c *Client) { c.CSRFToken = token }
 }
 
 // New builds a Client with sane defaults, then applies the given options.
