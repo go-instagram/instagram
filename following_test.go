@@ -115,6 +115,43 @@ func TestCurrentUserIDStatusError(t *testing.T) {
 	}
 }
 
+// TestCurrentUserIDFromSessionNoNetwork proves the id is read straight from the
+// sessionid cookie: the endpoint (which now 400s for web sessions) is never hit.
+func TestCurrentUserIDFromSessionNoNetwork(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request to %s: the id must come from the sessionid", r.URL.Path)
+	}))
+	t.Cleanup(srv.Close)
+	// sessionid "<id>%3A<token>%3A<…>" (URL-encoded "<id>:<token>:…").
+	c := New(WithBaseURL(srv.URL), WithSessionID("17841400000000000%3AAbCdEf%3A29"))
+	id, err := c.CurrentUserID(context.Background())
+	if err != nil {
+		t.Fatalf("CurrentUserID: %v", err)
+	}
+	if id != "17841400000000000" {
+		t.Errorf("id = %q, want 17841400000000000 (from the sessionid)", id)
+	}
+}
+
+func TestViewerIDFromSessionID(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{"url encoded", "17841400000000000%3AAbCdEf%3A29", "17841400000000000"},
+		{"already decoded", "12345678:tok:29", "12345678"},
+		{"all digits", "12345", "12345"},
+		{"non-numeric session", "sess-1", ""},
+		{"empty", "", ""},
+		{"digits are a prefix, not a field", "123abc:tok", ""},
+		{"invalid escape kept verbatim", "1234%", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := viewerIDFromSessionID(tc.in); got != tc.want {
+				t.Errorf("viewerIDFromSessionID(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestFollowingFirstPage(t *testing.T) {
 	var cap authCapture
 	c := newAuthServer(t, &cap, 0, `{

@@ -25,11 +25,18 @@ type FollowingPage struct {
 	NextMaxID string
 }
 
-// CurrentUserID returns the logged-in user's numeric id, read from the private
-// /api/v1/accounts/current_user/ endpoint. It requires a valid sessionid (see
-// [WithSessionID]); without one Instagram answers 302→login or 4xx, surfaced as
-// an error. The returned id is what [Client.Following] needs as its userID.
+// CurrentUserID returns the logged-in user's numeric id. It reads the id straight
+// from the sessionid cookie, whose leading field is that id (see
+// [viewerIDFromSessionID]) — no request, and authoritative for the account the
+// session belongs to. Only when the sessionid carries no derivable id does it
+// fall back to the private /api/v1/accounts/current_user/ endpoint (which now
+// answers 400 to logged-in web sessions, so the fallback rarely succeeds). It
+// requires a valid sessionid (see [WithSessionID]). The returned id is what
+// [Client.Following] needs as its userID.
 func (c *Client) CurrentUserID(ctx context.Context) (string, error) {
+	if id := viewerIDFromSessionID(c.SessionID); id != "" {
+		return id, nil
+	}
 	body, err := c.authGet(ctx, "/api/v1/accounts/current_user/")
 	if err != nil {
 		return "", err
@@ -53,6 +60,29 @@ func (c *Client) CurrentUserID(ctx context.Context) (string, error) {
 			"(sessionid may be missing or invalid)")
 	}
 	return id, nil
+}
+
+// viewerIDFromSessionID reads the logged-in user's numeric id from the sessionid
+// cookie. Instagram mints the sessionid for exactly one account and encodes that
+// account's id as the cookie's leading field: the value is "<id>%3A<token>%3A…"
+// (URL-encoded "<id>:<token>:…"). The leading run of digits — when it is the
+// whole first field (terminated by ':' or the end of the value) — is therefore
+// that account's id, needing no request. It returns "" for any other shape (a
+// non-numeric session token, or digits that are only a prefix of a larger
+// field), leaving the caller to fall back to the network endpoint.
+func viewerIDFromSessionID(sessionID string) string {
+	s := sessionID
+	if dec, err := url.QueryUnescape(s); err == nil {
+		s = dec
+	}
+	i := 0
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+	if i == 0 || (i < len(s) && s[i] != ':') {
+		return ""
+	}
+	return s[:i]
 }
 
 // Following returns one page of the accounts userID follows, starting at maxID
