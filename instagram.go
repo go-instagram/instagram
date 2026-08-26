@@ -55,6 +55,7 @@ type Post struct {
 
 // Profile is a public profile and its recent posts.
 type Profile struct {
+	ID        string // the account's permanent numeric id
 	Username  string
 	FullName  string
 	Biography string
@@ -222,6 +223,7 @@ func (c *Client) UserProfile(ctx context.Context, username string) (*Profile, er
 
 	u := parsed.Data.User
 	profile := &Profile{
+		ID:        u.ID,
 		Username:  u.Username,
 		FullName:  u.FullName,
 		Biography: u.Biography,
