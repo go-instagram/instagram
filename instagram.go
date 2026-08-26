@@ -128,6 +128,7 @@ func New(opts ...Option) *Client {
 type webProfileInfo struct {
 	Data struct {
 		User *struct {
+			ID           string `json:"id"`
 			Username     string `json:"username"`
 			FullName     string `json:"full_name"`
 			Biography    string `json:"biography"`
@@ -229,6 +230,18 @@ func (c *Client) UserProfile(ctx context.Context, username string) (*Profile, er
 	profile.Posts = make([]Post, 0, len(u.Timeline.Edges))
 	for _, edge := range u.Timeline.Edges {
 		profile.Posts = append(profile.Posts, c.toPost(edge.Node, u.Username))
+	}
+	// web_profile_info now routinely returns the profile with an EMPTY media list
+	// (edge_owner_to_timeline_media.edges: [], though its count is non-zero) —
+	// Instagram withholds the posts from this endpoint. When that happens, fall
+	// back to the private feed endpoint, which still serves the media to a
+	// logged-in session (see [Client.UserPosts]).
+	if len(profile.Posts) == 0 && u.ID != "" && c.SessionID != "" {
+		posts, err := c.UserPosts(ctx, u.ID, u.Username)
+		if err != nil {
+			return nil, err
+		}
+		profile.Posts = posts
 	}
 	return profile, nil
 }
