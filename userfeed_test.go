@@ -59,7 +59,7 @@ func TestUserProfileFallsBackToFeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UserProfile: %v", err)
 	}
-	if prof.Username != "acme" || prof.Followers != 10 {
+	if prof.ID != "999" || prof.Username != "acme" || prof.Followers != 10 {
 		t.Errorf("profile metadata lost: %+v", prof)
 	}
 	if len(prof.Posts) != 3 {
